@@ -1,6 +1,6 @@
 from __future__ import annotations
 import time as _time
-from typing import List, Optional, Sequence, Dict, Any, Set, Tuple
+from typing import Iterable, List, Optional, Sequence, Tuple, Dict, Any, Set
 import json
 import time
 import urllib.request
@@ -41,6 +41,12 @@ def _first_row_value_from_table(section_html: str, label_regex: str) -> str:
             return _textify(cols[1]).strip()
     return ""
 
+# --------------------------------------------------------------------
+# FlavorDB (legacy JSON endpoint)
+# --------------------------------------------------------------------
+def flavordb_entity_url(x: int) -> str:
+    return f"https://cosylab.iiitd.edu.in/flavordb/entities_json?id={x}"
+
 def _urlopen_with_retries(url: str, *, tries: int = 5, backoff: float = 0.8, timeout: int = 30) -> Any:
     import random
     from urllib.request import Request, urlopen
@@ -76,9 +82,20 @@ def _urlopen_with_retries(url: str, *, tries: int = 5, backoff: float = 0.8, tim
                 continue
             raise
 
+def get_flavordb_entity(x: int) -> Dict[str, Any]:
+    with _urlopen_with_retries(flavordb_entity_url(x)) as url:
+        return json.loads(url.read().decode("utf-8"))
+
 # --------------------------------------------------------------------
-# CSV schemas
+# Shared CSV schemas
 # --------------------------------------------------------------------
+def flavordb_entity_cols() -> List[str]:
+    # kept for backwards compatibility with any legacy callers
+    return [
+        "entity_id", "entity_alias_readable", "entity_alias_synonyms",
+        "natural_source_name", "category_readable", "molecules"
+    ]
+
 def flavordb_df_cols() -> List[str]:
     return ["entity id", "alias", "synonyms", "scientific name", "category", "molecules"]
 
@@ -123,6 +140,69 @@ def clean_flavordb_dataframes(flavor_df: pd.DataFrame, molecules_df: pd.DataFram
         flavor_df.groupby("entity id").first().reset_index(),
         molecules_df.groupby("pubchem id").first().reset_index(),
     )
+
+# --------------------------------------------------------------------
+# FlavorDB batch (legacy)
+# --------------------------------------------------------------------
+def get_flavordb_dataframes(start: int, end: int) -> Tuple[pd.DataFrame, pd.DataFrame, List[int]]:
+    flavordb_data: List[List[Any]] = []
+    molecules_dict: Dict[int, List[Any]] = {}
+    missing: List[int] = []
+
+    raw_cols = flavordb_entity_cols()
+
+    for i in range(start, end):
+        entity_id = i + 1
+        try:
+            fdbe = get_flavordb_entity(entity_id)
+            series = [fdbe[k] for k in raw_cols[:-1]]
+            series.append({m["pubchem_id"] for m in fdbe["molecules"]})
+            flavordb_data.append(series)
+            for m in fdbe["molecules"]:
+                pid = m["pubchem_id"]
+                if pid not in molecules_dict:
+                    molecules_dict[pid] = [
+                        m.get("common_name"),
+                        set((m.get("flavor_profile") or "").split("@")) if m.get("flavor_profile") else set(),
+                    ]
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+            if VERBOSE_ERRORS:
+                if isinstance(e, urllib.error.HTTPError):
+                    try: body = e.read().decode("utf-8", "replace")
+                    except Exception: body = "<no body>"
+                    print(f"[FlavorDB HTTPError] id={entity_id} code={getattr(e,'code',None)} reason={getattr(e,'reason',None)}")
+                    try: hdrs = dict(e.headers or {})
+                    except Exception: hdrs = {}
+                    print(f"Headers: {hdrs}\nBody (first 600):\n{body[:600]}\n" + "-"*60)
+                else:
+                    print(f"[FlavorDB URLError] id={entity_id} reason={getattr(e,'reason',e)}")
+            missing.append(entity_id)
+            continue
+
+    flavordb_df = pd.DataFrame(flavordb_data, columns=flavordb_df_cols())
+    molecules_df = pd.DataFrame(
+        [[k, v[0], v[1]] for k, v in molecules_dict.items()],
+        columns=molecules_df_cols(),
+    )
+    flavordb_df, molecules_df = clean_flavordb_dataframes(flavordb_df, molecules_df)
+    return flavordb_df, molecules_df, missing
+
+def update_flavordb_dataframes(df0: pd.DataFrame, df1: pd.DataFrame, ranges: Sequence[Tuple[int, int]],
+                               out_flavordb_csv: str = "flavordb.csv", out_molecules_csv: str = "molecules.csv"
+) -> Tuple[pd.DataFrame, pd.DataFrame, List[int]]:
+    df0_old = df0.copy(); df1_old = df1.copy(); missing_old: List[int] = []
+    start_ts = time.time()
+    try:
+        for a, b in ranges:
+            df0_new, df1_new, missing_new = get_flavordb_dataframes(a, b)
+            df0_old = pd.concat([df0_old, df0_new], ignore_index=True, sort=False)
+            df1_old = pd.concat([df1_old, df1_new], ignore_index=True, sort=False)
+            missing_old.extend(missing_new)
+        return df0_old, df1_old, missing_old
+    finally:
+        df0_old.to_csv(out_flavordb_csv, index=False)
+        df1_old.to_csv(out_molecules_csv, index=False)
+        print("Downloading took:", (time.time() - start_ts)/60.0, "minutes")
 
 # --------------------------------------------------------------------
 # CSV utilities
@@ -300,6 +380,9 @@ def _extract_flavor_profile_from_compound_html(htm: str) -> set[str]:
     return out
 
 def _extract_compound_fields_from_compound_html(htm: str) -> dict:
+    """
+    Robustly parse FSBI compound #general section (Bootstrap rows) into fields.
+    """
     out = {
         "name": "",
         "flavordb_id": None,
@@ -311,78 +394,90 @@ def _extract_compound_fields_from_compound_html(htm: str) -> dict:
         "synonyms": [],
     }
 
+    # 1) Isolate #general section
     m = re.search(r'<section id="general">(.*?)</section>', htm, flags=re.I | re.S)
-    general_html = m.group(1) if m else htm
+    general = m.group(1) if m else ""
 
-    def _find_field_value(label_regex, parse_func=None):
-        pattern = rf'<h5[^>]*>\s*{label_regex}\s*</h5>\s*</div>\s*<div\s+class="col-md-9"[^>]*>\s*<h5[^>]*>\s*<small>\s*(.*?)\s*</small>'
-        m = re.search(pattern, general_html, flags=re.I | re.S)
-        if m:
-            value = _textify(m.group(1)).strip()
-            if parse_func:
-                return parse_func(value)
-            return value
+    # 2) Name (title in the section)
+    m = re.search(r'<h3>\s*<i>\s*([^<]+?)\s*</i>\s*</h3>', general, flags=re.I | re.S)
+    if m:
+        out["name"] = m.group(1).strip()
+
+    # 3) Extract scalar fields directly using precise patterns
+    def _extract_from_row(label_pattern, value_pattern):
+        m = re.search(
+            rf'<h5[^>]*>\s*({label_pattern})\s*</h5>\s*</div>\s*'
+            rf'<div\s+class="col-md-9"[^>]*>\s*<h5[^>]*>\s*<small>\s*({value_pattern})\s*</small>',
+            general, flags=re.I | re.S
+        )
+        if m: return _textify(m.group(2)).strip()
         return None
 
-    mw_val = _find_field_value(r"Molecular\s*Weight", parse_func=lambda v: float(v) if v else None)
-    if mw_val is not None:
-        out["molecular_weight"] = mw_val
-
-    out["molecular_formula"] = _find_field_value(r"Molecular\s*Formula")
-    out["smiles"] = _find_field_value(r"OpenEye\s*CAN\s*SMILES")
-    out["inchikey"] = _find_field_value(r"(?:IUPAC\s*InChI\s*Key|InChIKey)")
-
-    syn_html_match = re.search(r'>\s*Synonyms\s*</h5>\s*</div>\s*<div\s+class="col-md-9"[^>]*>(.*?)</div>\s*</div>', general_html, flags=re.I | re.S)
-    if syn_html_match:
-        text = _textify(syn_html_match.group(1))
-        out["synonyms"] = [p.strip() for p in re.split(r'[;,]', text) if p.strip()]
-
-    out["pubchem_id"] = _extract_pubchem_from_compound_html(htm)
-    out["name"] = _extract_compound_name_from_html(htm)
+    out["molecular_weight"] = float(_extract_from_row(r"Molecular\s*Weight", r"[\d\.]+") or 0.0)
+    out["molecular_formula"] = _extract_from_row(r"Molecular\s*Formula", r"[A-Za-z0-9]+")
+    out["smiles"] = _extract_from_row(r"OpenEye\s*CAN\s*SMILES", r"[^<]+")
+    out["inchikey"] = _extract_from_row(r"(?:IUPAC\s*InChI\s*Key|InChIKey)", r"[A-Z0-9\-]+")
+    
+    # 4) Extract synonyms
+    syn_html = ""
+    ms = re.search(
+        r'>\s*Synonyms\s*</h5>\s*</div>\s*<div\s+class="col-md-9"[^>]*>(.*?)</div>\s*</div>',
+        general, flags=re.I | re.S
+    )
+    if ms:
+        syn_html = ms.group(1)
+    if syn_html:
+        text = _textify(syn_html)
+        parts = [p.strip() for p in re.split(r'[;,]', text)]
+        seen = set()
+        for p in parts:
+            if p and p not in seen:
+                seen.add(p)
+                out["synonyms"].append(p)
+    
+    # 5) As a final safety, also try the global helpers for pubchem/name if still empty
+    out["pubchem_id"] = out["pubchem_id"] or _extract_pubchem_from_compound_html(htm)
+    out["name"] = out["name"] or _extract_compound_name_from_html(htm)
     
     return out
 
 # --- FSBI Food extraction -----------------------------------------------------
 def _extract_food_fields_from_html(htm: str) -> tuple[int | None, str, str]:
-    gen = _section_by_id(htm, "general", ["class", "kfo", "ref"]) or htm
-
-    def _find_general_field(label_regex: str) -> str:
-        m = re.search(
-            rf'<h5[^>]*>{label_regex}</h5>[^>]*>.*?<small[^>]*>(.*?)</small>|'
-            rf'<tr>.*?<t[dh]>{label_regex}</t[dh]>.*?<t[dh]>(.*?)</t[dh]>.*?</tr>',
-            gen, flags=re.I | re.S
-        )
-        if m:
-            return _textify(m.group(1) or m.group(2)).strip().lower()
-        return ""
-
-    alias = _find_general_field(r"Name")
-    category = _find_general_field(r"Food\s*Category")
+    """
+    Food page parsing (use the Generals card only):
+      - alias  := Generals -> 'Name'
+      - entity := Generals -> 'FlavorDB Food ID'
+      - category := Generals -> 'Food Category'
+    """
+    gen = _section_by_id(htm, "general", ["class", "kfo", "ref"])
     
-    entity_id = None
-    v_id = _find_general_field(r"FlavorDB\s*Food\s*ID")
-    if v_id:
-        try:
-            entity_id = int(v_id)
-        except (ValueError, TypeError):
-            pass
+    # alias
+    alias = _first_row_value_from_table(gen, r"\bname\b").strip().lower()
 
-    if not entity_id:
-        m = re.search(r"food\.php\?id=(\d+)", htm)
-        if m:
-            try: entity_id = int(m.group(1))
-            except Exception: pass
+    # entity id
+    v_id = _first_row_value_from_table(gen, r"flavordb\s+food\s+id")
+    try:
+        m = re.search(r"\d+", v_id) if v_id else None
+        entity_id = int(m.group()) if m else None
+    except Exception:
+        entity_id = None
+
+    # category
+    category = _first_row_value_from_table(gen, r"food\s+category").strip().lower()
 
     return (entity_id, alias, category)
 
 def _extract_compound_links_from_food_html(htm: str) -> list[str]:
+    # Prefer KFO card, fall back to whole page; return absolute links
     sec = _section_by_id(htm, "kfo", ["ref", "class", "general"]) or htm
     p = _LinkCollector(); p.feed(sec or "")
     hrefs = []
     for (h, _t) in p.links:
         h = h or ""
+        # accept relative, absolute, or dotted prefixes; just look for the path fragment
         if "single.php?id=" in h:
             hrefs.append(_abs(h))
+    # de-dupe, preserve order
     out, seen = [], set()
     for h in hrefs:
         if h not in seen:
@@ -395,13 +490,16 @@ def fsbi_download_compound_json(compound_page_url: str) -> dict | None:
         if FSBI_DEBUG:
             print(f"[FSBI] compound page ok: {compound_page_url} ({len(html)} bytes)")
 
+        # 1) try JSON button (when visible)
         json_link = _find_json_download_link(html)
         if json_link:
             try:
                 txt = _fsbi_fetch(json_link)
                 data = json.loads(txt)
+                # Ensure our standard keys exist even if JSON schema varies
                 data.setdefault("pubchem_id", _extract_pubchem_from_compound_html(html))
                 data.setdefault("common_name", _extract_compound_name_from_html(html))
+                # add normalized flavor profile from Quality table if JSON lacks it
                 if not _parse_flavor_profile(data):
                     data["flavor_profile"] = sorted(_extract_flavor_profile_from_compound_html(html))
                 return data
@@ -409,7 +507,9 @@ def fsbi_download_compound_json(compound_page_url: str) -> dict | None:
                 if FSBI_DEBUG:
                     print(f"[FSBI] compound JSON fetch/parse failed: {json_link} ({e})")
 
-        fields = _extract_compound_fields_from_compound_html(html)
+        # 2) fallback: parse HTML comprehensively
+        fields = _extract_compound_fields_from_compound_html(html)  # name, ids, MW, formula, smiles, inchikey, synonyms
+        # Always add/refresh these minimal fields
         fields["pubchem_id"] = fields.get("pubchem_id") or _extract_pubchem_from_compound_html(html)
         fields["common_name"] = fields.get("name") or _extract_compound_name_from_html(html)
         fields["flavor_profile"] = sorted(_extract_flavor_profile_from_compound_html(html))
@@ -426,6 +526,7 @@ def fsbi_download_food_json(food_page_url: str, max_compounds: int = 50) -> dict
         if FSBI_DEBUG:
             print(f"[FSBI] food page ok: {food_page_url} ({len(html)} bytes)")
 
+        # JSON button attempt (if ever exposed)
         json_link = _find_json_download_link(html)
         if json_link:
             try:
@@ -435,6 +536,7 @@ def fsbi_download_food_json(food_page_url: str, max_compounds: int = 50) -> dict
                 if FSBI_DEBUG:
                     print(f"[FSBI] food JSON fetch/parse failed: {json_link} ({e})")
 
+        # fallback: parse HTML and linked compounds
         entity_id, alias, category = _extract_food_fields_from_html(html)
 
         molecules: list[int] = []
@@ -461,6 +563,7 @@ def fsbi_download_food_json(food_page_url: str, max_compounds: int = 50) -> dict
 # FSBI discovery
 # --------------------------------------------------------------------
 def fsbi_discover_compound_and_food_links(queries: list[str] | None = None, max_per_query: int = 50):
+    """Find item pages by hitting the type-specific search pages."""
     if not queries:
         queries = ["beer","tea","citrus","onion","garlic","cocoa","lemon","mango","apple","milk"]
 
@@ -488,6 +591,7 @@ def fsbi_discover_compound_and_food_links(queries: list[str] | None = None, max_
                     print(f"[FSBI] discover FAILED: {url} ({e})")
                 continue
 
+    # Trim to a sane size
     lim = len(queries) * max_per_query if queries else 500
     return sorted(list(compounds))[:lim], sorted(list(foods))[:lim]
 
@@ -541,6 +645,8 @@ def build_fsbi_dataframes(compound_urls: list[str] | None = None,
                           max_compounds: int | None = 1000,
                           delay: float = 0.0) -> tuple[pd.DataFrame, pd.DataFrame]:
     
+
+    # Discover if not provided
     if not compound_urls:
         compound_urls, discovered_foods = fsbi_discover_compound_and_food_links(queries=discovery_queries)
         if not food_urls:
@@ -549,6 +655,7 @@ def build_fsbi_dataframes(compound_urls: list[str] | None = None,
     foods_map: dict[int, dict] = {}
     mols_map: dict[int, dict] = {}
 
+    # Pass 1: compounds → (molecules, flavors)
     for idx, curl in enumerate(compound_urls):
         if max_compounds and idx >= max_compounds: break
         d = fsbi_download_compound_json(curl)
@@ -565,12 +672,14 @@ def build_fsbi_dataframes(compound_urls: list[str] | None = None,
             rec["flavor profile"] |= fprof
         if delay: _time.sleep(delay)
 
+    # Pass 2: foods → parse alias/category + crawl linked compound pages
     for fidx, furl in enumerate(food_urls or []):
         d = fsbi_download_food_json(furl)
         if not d:
             if delay: _time.sleep(delay)
             continue
 
+        # robust id extraction
         fid = d.get("entity_id") or d.get("id") or d.get("food_id") or d.get("fsbi_id")
         if fid is None:
             m = re.search(r"[?&]id=(\d+)", furl)
@@ -600,6 +709,7 @@ def build_fsbi_dataframes(compound_urls: list[str] | None = None,
 
         if delay: _time.sleep(delay)
 
+    # Materialize rows
     flavor_rows = [
         [int(fid), rec.get("alias",""), rec.get("synonyms", set()),
          rec.get("scientific name",""), rec.get("category",""),
@@ -620,6 +730,21 @@ def build_fsbi_dataframes(compound_urls: list[str] | None = None,
 # Diagnostics
 # --------------------------------------------------------------------
 def diagnose_flavordb(ids=(1,)):
-    # This function is now a placeholder as the external service is down.
-    print("Diagnosis for the legacy FlavorDB API is disabled because the service is unavailable.")
-    pass
+    """Fetch a few FlavorDB JSONs and print detailed errors."""
+    for x in ids:
+        url = flavordb_entity_url(x)
+        print(f"\n== Checking {url} ==")
+        try:
+            d = get_flavordb_entity(x)
+            print(f"OK: entity {x} -> keys: {list(d)[:8]}")
+        except urllib.error.HTTPError as e:
+            try: body = e.read().decode("utf-8", "replace")
+            except Exception: body = "<no body>"
+            print(f"[HTTPError] code={getattr(e,'code',None)} reason={getattr(e,'reason',None)}")
+            try: hdrs = dict(e.headers or {})
+            except Exception: hdrs = {}
+            print(f"Headers: {hdrs}\nBody (first 600):\n{body[:600]}")
+        except urllib.error.URLError as e:
+            print(f"[URLError] reason={getattr(e,'reason',e)}")
+        except Exception as e:
+            print(f"[OtherError]")
