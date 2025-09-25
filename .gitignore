@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg
+*.egg-info/
+
+# Distribution / packaging
+.Python
+build/
+dist/
+develop-eggs/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Editors and IDEs
+.idea/  # PyCharm
+.vscode/ # VS Code
+*.swp   # Vim swap files
+*~      # Emacs backup files
+
+# OS generated files
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Logs and temporary files
+*.log
+*.tmp
+temp/
+
+# Database files
+*.sqlite3
+
+# Specific project files (examples)
+config.xml
+local_settings.py

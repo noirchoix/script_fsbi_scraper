@@ -1,0 +1,105 @@
+pubchem id,common name,flavor profile
+176,acetic acid,"{'vinegar-like', 'sour', 'vingar-like'}"
+525,malic acid,{'sour'}
+612,lactate,"{'sour and salty', 'sour'}"
+2519,caffeine,{'bitter'}
+5429,theobromine,{'bitter'}
+6134,lactose,{'sweet'}
+6343,ethanethiol,"{'rotten', 'onion-like'}"
+7353,butyl 2-methylpropanoate,set()
+7523,2-ethylpyridine,set()
+7590,ethyl 2-phenylacetate,set()
+7704,gamma-octalactone,{'coconut-like'}
+7765,"1,1-diethoxyethane",set()
+7794,citronellal,set()
+8159,heptyl acetate,set()
+8186,undecanal,set()
+8193,1-dodecanol,set()
+9064,(+)-catechin,"{'astringent', 'bitter'}"
+9862,6-methyl-5-hepten-2-one,"{'fruity', 'earthy', 'esterlike'}"
+10353,"(1r,4r)/(1s,4s)-p-menthan-8-ol","{'fir needle-like', 'peppermint-like'}"
+10885,2-methylpropyl butanoate,set()
+10886,pentyl hexanoate,set()
+11005,myristic acid,{'fatty'}
+11543,2-methyl-2-pentanol,"{'fruity', 'sweet'}"
+12206,methyl pentanoate,set()
+12613,3-methylbutyl 3-methylbutanoate,set()
+14286,2-acetylpyridine,set()
+16315,diallyl trisulfide,set()
+16590,diallyl disulfide,set()
+19309,"4-hydroxy-2,5-dimethyl-3(2h)-furanone (furaneol®)","{'roasty', 'caramel-like'}"
+21648,4-(4-hydroxyphenyl)-2-butanone),set()
+22873,hexyl hexanoate,set()
+24699,1-stearoyl-rac-glycerol,{'bitter'}
+25916,"2-ethyl-3,6-dimethylpyrazine","{'roasty', 'earthy'}"
+26331,2-ethylpyrazine,set()
+26334,"2-ethyl-3,5-dimethylpyrazine","{'earty', 'earthy', 'roasty'}"
+31553,silibinin,set()
+32065,"5-methyl-6,7-dihydro-5h-cyclopentapyrazine",set()
+36225,"2,5-diethyl-3-methylpyrazine",set()
+61130,myrtenal,set()
+61700,2-isopropyl-5-methylpyrazine,set()
+61926,allyl methyl trisulfide,set()
+62433,pentyl pentanoate,set()
+62465,4-ethyl-2-methoxyphenol,"{'gammon-like', 'smoky'}"
+72277,epigallocatechin,{'astringent'}
+77743,3-(methylthio)propylamine,"{'ammonia-like', 'cooked potato-like', 'fishy'}"
+78236,4-nonanone,set()
+79828,dimethyltetrasulfide,set()
+81772,dimethyl pentasulfide,set()
+85730,"2,5-dimethyl-3(2h)-furanone",set()
+95200,methyl methanethiosulfinate,set()
+98781,allyl propyl sulfide,set()
+102892,cyclo(l-pro-l-leu),{'bitter'}
+104285,dipropyl tetrasulfide,set()
+122383,2-methyl-5-propylpyrazine,set()
+122594,"3,5-dimethyl-2-propylpyrazine",{'earthy'}
+122738,procyanidin b2,"{'astringent', 'bitter'}"
+124017,procyanidin b5,"{'astringent', 'bitter'}"
+133337,"2-vinyl-4h-1,3-dithiin",set()
+146798,procyanidin b3,"{'astringent', 'bitter'}"
+179651,limonin,{'bitter'}
+222656,l-malate,{'sour'}
+439378,5 n -ethyl-l-glutamine  (theanine),"{'astringent', 'sweet', 'umami'}"
+439533,(+)-taxifolin; taxifoline; taxifolin,set()
+442428,naringin,set()
+493570,riboflavin,set()
+519845,methyl 3-hydroxyhexanoate,set()
+520326,3-methylbutyl 2-methylbutanoate,set()
+520682,3-mercapto-3-methyl-1-butanol,"{'kerosene', 'cat urine', 'sweaty', 'meat-like', 'onion-like'}"
+525330,allyl propyl trisulfide,set()
+529481,"3-methyl-2,4-nonanedione","{'straw-like', 'fishy', 'fruity', 'aniseed-like', 'hay-like', 'lard-like'}"
+637564,"2,4-hexadienal",set()
+637566,geraniol,"{'floral', 'fruity', 'rose-like', 'flowery', 'citrus-like'}"
+643779,neral,set()
+643820,nerol,{'lemon balm-like'}
+5280443,apigenin,set()
+5283339,"(e,e)-2,4-nonadienal","{'fatty', 'green'}"
+5320722,1-propenyl propyl sulfide,set()
+5352690,methyl (e)-1-propenyl trisulfide,set()
+5352691,methyl (z)-1-propenyl trisulfide,set()
+5352693,(e)-1-propenyl propyl trisulfide,set()
+5352694,(z)-1-propenyl propyl trisulfide,set()
+5352793,di-(e)-1-propenyl trisulfide,set()
+5352855,1-propenyl 2-propenyl disulfide,set()
+5354833,(z)-2-nonenal,"{'green', 'fatty', 'oil paint-like'}"
+5362814,(z)-4-heptenal,"{'biscuit-like', 'fish oil-like', 'fishy'}"
+5374527,(e)-beta-damascone,set()
+5460341,calcium,"{'salty', 'bitter'}"
+5748431,nomilinic acid 17-o-beta-d-glcp,{'astringent'}
+6164465,methyl (z)-1-propenyl disulfide,set()
+6178836,theaflavic acid,{'astringent'}
+6419835,catechin gallate,{'astringent'}
+6427076,wine lactone,{'coconut-like'}
+6427135,1-p-menthene-8-thiol,{'grapefruit-like'}
+6428987,cyclo(l-pro-l-ala),{'bitter'}
+6430888,3-mercapto-2-methyl-1-pentanol,"{'onion-like', 'meat-like'}"
+6431294,"(3r,5s)/(3s,5r)-3,5-diethyl-1,2,4-trithiolane (cis-3,5-diethyl-1,2,4-trithiolane)",set()
+6432398,"(3r,5r)/(3s,5s)-3,5-diethyl-1,2,4-trithiolane (trans-3,5-diethyl-1,2,4-trithiolane)",set()
+12365893,(z)-2-pentenal,set()
+24721373,rubusoside,"{'sweet', 'bitter'}"
+54670067,ascorbic acid,{'sour'}
+88369124,"(z,z)-2,6-nonadienal",set()
+101746085,phloretin-2'-xyloglucosid,"{'astringent', 'bitter'}"
+135403798,theaflavin,{'astringent'}
+135452274,theaflavic acid,{'astringent'}
