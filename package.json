@@ -1,0 +1,14 @@
+{
+  "name": "recipe-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root package to run Svelte frontend and FastAPI backend together",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "scripts": {
+    "dev:frontend": "npm run dev --prefix recipe",
+    "dev:backend": "uvicorn server.main:app --reload",
+    "dev": "concurrently --kill-others-on-fail \"npm run dev:backend\" \"npm run dev:frontend\""
+  }
+}

@@ -47,7 +47,7 @@ def _first_row_value_from_table(section_html: str, label_regex: str) -> str:
 def flavordb_entity_url(x: int) -> str:
     return f"https://cosylab.iiitd.edu.in/flavordb/entities_json?id={x}"
 
-def _urlopen_with_retries(url: str, *, tries: int = 5, backoff: float = 0.8, timeout: int = 30) -> Any:
+def _urlopen_with_retries(url: str, *, tries: int = 7, backoff: float = 2.0, timeout: int = 60) -> Any:
     import random
     from urllib.request import Request, urlopen
     from urllib.error import HTTPError, URLError
@@ -263,6 +263,7 @@ def _abs(u: Optional[str]) -> str:
     return f"{_FSBI_ROOT}/{u}"
 
 def _fsbi_fetch(url: str) -> str:
+    # UPDATED: Now uses the robust _urlopen_with_retries function defined above
     try:
         with _urlopen_with_retries(url) as resp:
             raw = resp.read()
@@ -282,6 +283,8 @@ def _fsbi_fetch(url: str) -> str:
     except urllib.error.URLError as e:
         if VERBOSE_ERRORS:
             print(f"[FSBI URLError] url={url} reason={getattr(e,'reason',e)}")
+        # CRITICAL: Re-raise the URLError so the caller's catch block (e.g., in fsbi_download_food_json)
+        # can log the error message you saw: "[FSBI] food error: IncompleteRead(0 bytes read)"
         raise
 
 # ---- JSON download link finder (restored) -----------------------------------
@@ -510,7 +513,11 @@ def fsbi_download_compound_json(compound_page_url: str) -> dict | None:
         # 2) fallback: parse HTML comprehensively
         fields = _extract_compound_fields_from_compound_html(html)  # name, ids, MW, formula, smiles, inchikey, synonyms
         # Always add/refresh these minimal fields
-        fields["pubchem_id"] = fields.get("pubchem_id") or _extract_pubchem_from_compound_html(html)
+        
+        # ✅ Ensure pubchem_id is extracted and assigned explicitly if it wasn't found in fields
+        pubchem_id = fields.get("pubchem_id") or _extract_pubchem_from_compound_html(html)
+        if pubchem_id:
+            fields["pubchem_id"] = pubchem_id
         fields["common_name"] = fields.get("name") or _extract_compound_name_from_html(html)
         fields["flavor_profile"] = sorted(_extract_flavor_profile_from_compound_html(html))
         return fields
