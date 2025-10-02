@@ -6,6 +6,18 @@ from functions import (
     molecules_df_cols,
     load_db,
 )
+# Access data
+def make_query():
+    df = pd.read_csv("data/fragrance_food_sources.csv")
+    return df["common_name"].dropna().tolist()
+
+def chunk_ranges(start: int, end: int, chunk: int):
+    """Yield (a, b) index slices for batching."""
+    a = start
+    while a < end:
+        b = min(a + chunk, end)
+        yield a, b
+        a = b
 
 def _set_runtime_flags():
     # Optional runtime toggles for verbose errors without editing functions.py
@@ -18,13 +30,17 @@ def _set_runtime_flags():
 
 def run_fsbi(args) -> int:
     from functions import build_fsbi_dataframes, missing_entity_ids
-    queries = [q.strip() for q in (args.discover_terms or "").split(",") if q.strip()] or None
+    # queries = [q.strip() for q in (args.discover_terms or "").split(",") if q.strip()] or None
+    queries = make_query()
+    for a, b in chunk_ranges(0, len(queries), 50):  # batch size = 500
+        batch = queries[a:b]
+        print(f"Processing batch {a}-{b} of {len(queries)}: {batch}")
 
     try:
         flavor_df, molecules_df = build_fsbi_dataframes(
             compound_urls=None,
             food_urls=None,
-            discovery_queries=queries,
+            discovery_queries=batch,
             max_compounds=args.max_compounds,
             delay=args.delay,
         )
