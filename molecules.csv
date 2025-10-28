@@ -1,0 +1,26 @@
+pubchem id,common name,flavor profile
+323,chromen-2-one,{'woodruff-like'}
+702,ethanol,"{'sweet', 'ethanolic', 'sweet and bitter'}"
+1110,succinic acid,"{'umami', 'sour'}"
+1183,4-hydroxy-3-methoxybenzaldehyde (vanillin),"{'astringent', 'sweet', 'vanilla-like'}"
+2758,"1,8-cineole (eucalyptol)","{'camphor', 'cool', 'spicy'}"
+4133,methyl salicylate,set()
+7501,styrene,"{'model airplane glue', 'balsamic', 'sweet'}"
+7738,anise alcohol,set()
+7794,citronellal,set()
+8467,4-hydroxy-3-ethoxybenzaldehyde (ethylvanillin),set()
+8468,vanillic acid,{'astringent'}
+9862,6-methyl-5-hepten-2-one,"{'esterlike', 'earthy', 'fruity'}"
+11516,4-octanone,set()
+12038,vanillic acid ethyl ester,"{'astringent', 'bitter'}"
+12206,methyl pentanoate,set()
+20748,methyl cyclohexanecarboxylate,set()
+22311,limonene,"{'carrot-like', 'ethereal', 'citrus-like'}"
+32065,"5-methyl-6,7-dihydro-5H-cyclopentapyrazine",set()
+61700,2-isopropyl-5-methylpyrazine,set()
+68827,Artemisinin,set()
+78236,4-nonanone,set()
+173843,sedanenolide,set()
+442138,Absinthin,set()
+5281643,Hyperoside,{'astringent'}
+5574924,Arglabin,set()

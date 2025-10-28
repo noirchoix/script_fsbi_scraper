@@ -1,0 +1,14 @@
+annotated-types==0.7.0
+greenlet==3.2.4
+numpy==2.3.3
+pandas==2.3.2
+pydantic==2.11.9
+pydantic_core==2.33.2
+python-dateutil==2.9.0.post0
+pytz==2025.2
+six==1.17.0
+SQLAlchemy==2.0.43
+sqlmodel==0.0.25
+typing-inspection==0.4.1
+typing_extensions==4.15.0
+tzdata==2025.2
