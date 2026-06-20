@@ -1,59 +1,57 @@
-# FlavorDB / FSBI Scraper Workbench
+# FlavorDB / FSBI Workbench
 
-This app wraps the existing FSBI scraping functions in a small FastAPI backend and adds a SvelteKit frontend for food-to-flavor exploration.
+This repository is split into a deployable frontend and a separate Python API reference implementation.
 
-## What it does
+## Structure
 
-Enter a food or aromatic ingredient, then the app returns:
+```text
+apps/web   SvelteKit frontend for Netlify/Vercel
+apps/api   FastAPI backend/reference FSBI scraper code
+```
 
-- parsed food records
-- linked molecule IDs
-- compound names
-- PubChem IDs where available
-- flavor/taste/smell descriptors
-- scrape trace and warnings
-- JSON export
+For the portfolio deployment, deploy only `apps/web` on Netlify and point it to the unified flagship backend on Render.
 
-## Run Backend
+## Netlify deployment
+
+Use these settings:
+
+```text
+Base directory: apps/web
+Build command: npm ci && npm run build
+Publish directory: build
+```
+
+Set this environment variable in Netlify:
+
+```env
+VITE_API_BASE_URL=https://flagship-ai-suite-api.onrender.com
+```
+
+The frontend calls:
+
+```text
+/api/scrape
+```
+
+## Local frontend
 
 ```bash
+cd apps/web
+npm install
+cp .env.example .env
+npm run dev
+```
+
+## Local API reference
+
+```bash
+cd apps/api
 python -m venv venv
-venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\\Scripts\\activate
 pip install -r requirements.txt
 uvicorn server:app --reload --host 127.0.0.1 --port 8000
 ```
 
-API docs:
+## Deployment note
 
-```text
-http://127.0.0.1:8000/docs
-```
-
-## Run Frontend
-
-In another terminal:
-
-```bash
-npm install
-npm run dev
-```
-
-Open:
-
-```text
-http://localhost:5173
-```
-
-## Environment
-
-The frontend defaults to:
-
-```text
-http://127.0.0.1:8000
-```
-
-To override it, create `.env`:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
+Do not let Netlify install Python dependencies for this project. Netlify should build only the SvelteKit frontend. The Python backend belongs in Render or in the unified flagship backend.

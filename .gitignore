@@ -1,65 +1,38 @@
-# Byte-compiled / optimized / DLL files
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
 __pycache__/
-*.pyc
-*.pyd
-*.pyo
-*.egg
-*.egg-info/
-
-# Distribution / packaging
-.Python
-build/
-dist/
-develop-eggs/
-eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environment
-venv/
+*.py[cod]
 .venv/
+venv/
 env/
-.env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Editors and IDEs
-.idea/  # PyCharm
-.vscode/ # VS Code
-*.swp   # Vim swap files
-*~      # Emacs backup files
-
-# OS generated files
-.DS_Store # macOS
-Thumbs.db # Windows
-
-# Logs and temporary files
-*.log
-*.tmp
-temp/
-
-# Database files
-*.sqlite3
-
-# Specific project files (examples)
-config.xml
-local_settings.py
-
-# Node / SvelteKit
+# Node
 node_modules/
 .svelte-kit/
-/build/
-/packages/
-.npm/
-.npx/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.next/
+dist/
+build/
+.vercel/
+.netlify/
 
+# Runtime/data outputs
+logs/
+outputs/
+runs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
